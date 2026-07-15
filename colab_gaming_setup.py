@@ -401,6 +401,62 @@ def print_connection_info():
 # ГЛАВНАЯ ФУНКЦИЯ
 # ============================================================================
 
+def keep_alive():
+    """Держит ячейку активной и показывает логи"""
+    import threading
+    
+    web_log = os.path.join(INSTALL_DIR, "web-server.log")
+    cf_log = os.path.join(INSTALL_DIR, "cloudflared.log")
+    
+    last_web_line = 0
+    last_cf_line = 0
+    
+    def read_new_lines(filepath, last_line_num):
+        """Читает новые строки из файла"""
+        try:
+            if not os.path.exists(filepath):
+                return last_line_num, []
+            
+            with open(filepath, 'r') as f:
+                lines = f.readlines()
+            
+            new_lines = lines[last_line_num:]
+            return len(lines), new_lines
+        except Exception as e:
+            return last_line_num, []
+    
+    info("📺 Показываю логи (Ctrl+C для остановки)...")
+    print()
+    
+    try:
+        while True:
+            # Читаю новые строки из логов
+            last_web_line, web_lines = read_new_lines(web_log, last_web_line)
+            last_cf_line, cf_lines = read_new_lines(cf_log, last_cf_line)
+            
+            # Выводю новые строки
+            if web_lines:
+                for line in web_lines:
+                    print(f"{Colors.BLUE}[WEB]{Colors.END} {line.rstrip()}")
+            
+            if cf_lines:
+                for line in cf_lines:
+                    print(f"{Colors.YELLOW}[CF ]{Colors.END} {line.rstrip()}")
+            
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n")
+        info("Ячейка остановлена")
+        return
+    except Exception as e:
+        warn(f"Ошибка при чтении логов: {e}")
+        # Все равно держу ячейку активной
+        try:
+            while True:
+                time.sleep(60)
+        except KeyboardInterrupt:
+            pass
+
 def main():
     print()
     print("🎮 Google Colab Cloud Gaming Setup - Python Version")
@@ -446,7 +502,15 @@ def main():
     # Выводу информацию
     print_connection_info()
     
-    info("Облачный гейминг запущен! 🚀")
+    success("Облачный гейминг запущен! 🚀")
+    print()
+    
+    # Держу ячейку активной
+    print("━"*72)
+    print("ЛОГИРОВАНИЕ (активная ячейка)")
+    print("━"*72)
+    print()
+    keep_alive()
 
 if __name__ == "__main__":
     try:
