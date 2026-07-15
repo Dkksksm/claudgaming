@@ -305,10 +305,6 @@ def start_moonlight_web():
     
     validate_pin(PIN)
     
-    pin_file = os.path.join(INSTALL_DIR, "server", "pair-pin.txt")
-    with open(pin_file, 'w') as f:
-        f.write(PIN)
-    
     os.chdir(INSTALL_DIR)
     
     log_file = os.path.join(INSTALL_DIR, "web-server.log")
@@ -317,6 +313,44 @@ def start_moonlight_web():
     
     success("Moonlight Web запущен")
     time.sleep(3)
+    
+    # Устанавливаем PIN через API (как в moon-pair.sh)
+    info("Настраиваю PIN для Moonlight...")
+    time.sleep(2)  # Ждем запуск сервера
+    
+    try:
+        import urllib.request
+        import ssl
+        
+        # Отключаем SSL проверку для localhost
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        
+        # Устанавливаем PIN через API
+        pin_url = f"https://localhost:{STREAMING_PORT}/api/pin"
+        pin_data = json.dumps({"pin": PIN, "name": "claudgaming"}).encode()
+        
+        req = urllib.request.Request(
+            pin_url,
+            data=pin_data,
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        
+        # Добавляем basic auth (admin:admin)
+        import base64
+        credentials = base64.b64encode(b"admin:admin").decode()
+        req.add_header("Authorization", f"Basic {credentials}")
+        
+        try:
+            with urllib.request.urlopen(req, context=ctx, timeout=10) as response:
+                success(f"PIN {PIN} установлен через API")
+        except Exception as e:
+            warn(f"Не удалось установить PIN через API: {e}")
+            warn("PIN будет установлен автоматически при первом подключении")
+    except Exception as e:
+        warn(f"Ошибка при настройке PIN: {e}")
 
 def start_cloudflare_tunnel():
     """Запускает Cloudflare tunnel"""
@@ -403,8 +437,6 @@ def print_connection_info():
 
 def keep_alive():
     """Держит ячейку активной и показывает логи"""
-    import threading
-    
     web_log = os.path.join(INSTALL_DIR, "web-server.log")
     cf_log = os.path.join(INSTALL_DIR, "cloudflared.log")
     
@@ -424,6 +456,19 @@ def keep_alive():
             return len(lines), new_lines
         except Exception as e:
             return last_line_num, []
+    
+    # Пытаемся включить audio для поддержания активности в Colab
+    try:
+        from IPython.display import HTML, display
+        audio_html = '''
+        <audio autoplay loop style="display:none">
+            <source src="https://github.com/kmille36/Colab-Cloud-Gaming/raw/refs/heads/main/silence.m4a" type="audio/mp4">
+        </audio>
+        '''
+        display(HTML(audio_html))
+        info("🔊 Включен audio для поддержания активности Colab")
+    except:
+        pass
     
     info("📺 Показываю логи (Ctrl+C для остановки)...")
     print()
