@@ -12,7 +12,16 @@ error() { echo -e "\e[1;31m[ERROR]\e[0m $*" >&2; exit 1; }
 clone_repo() {
   if [ -d "$REPO_DIR/.git" ]; then
     info "Обновляю репозиторий $REPO_DIR"
-    git -C "$REPO_DIR" pull --rebase || true
+    if [ -n "$(git -C "$REPO_DIR" status --porcelain)" ]; then
+      info "Найдены локальные изменения, очищаю рабочую папку"
+      git -C "$REPO_DIR" reset --hard HEAD
+      git -C "$REPO_DIR" clean -fd
+    fi
+    if ! git -C "$REPO_DIR" pull --rebase; then
+      info "Не удалось обновить репозиторий, клонирую заново"
+      rm -rf "$REPO_DIR"
+      git clone "$REPO_URL" "$REPO_DIR"
+    fi
   else
     info "Клонирую репозиторий в $REPO_DIR"
     rm -rf "$REPO_DIR"
@@ -38,12 +47,12 @@ ensure_repo() {
 ensure_root() {
   if [ "${EUID:-$(id -u)}" -ne 0 ]; then
     if command -v sudo >/dev/null 2>&1; then
-      SUDO=sudo
+      SUDO="sudo env"
     else
       error "Требуются root-права или sudo для установки."
     fi
   else
-    SUDO=""
+    SUDO="env"
   fi
 }
 
@@ -70,7 +79,7 @@ main() {
   prompt_pin
 
   info "Запускаю Moonlight Web и Cloudflare tunnel"
-  printf '%s\n' "$PIN" | $SUDO bash "$INSTALL_SCRIPT" run
+  MOONLIGHT_PIN="$PIN" $SUDO bash "$INSTALL_SCRIPT" run
 
   local local_ip
   local_ip=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")

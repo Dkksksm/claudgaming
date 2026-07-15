@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-INSTALL_DIR="${INSTALL_DIR:-${HOME:-/root}/claudgaming-moonlight}"
+INSTALL_DIR="${INSTALL_DIR:-}"
+if [ -z "$INSTALL_DIR" ]; then
+  if [ -d /content ]; then
+    INSTALL_DIR="/content/claudgaming-moonlight"
+  else
+    INSTALL_DIR="${HOME:-/root}/claudgaming-moonlight"
+  fi
+fi
 MOONLIGHT_RELEASE_URL="https://github.com/kmille36/moonlight-web-remote/releases/download/0.0.2/colab-linux.zip"
 CLOUDFLARED_URL="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64"
 STEAMCMD_URL="https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz"
@@ -166,7 +173,11 @@ show_summary() {
 
 run_server() {
   local pin
-  read -r -p "Введите PIN для подключения Moonlight (4 цифры, например 1234): " pin
+  pin="${1:-${MOONLIGHT_PIN:-}}"
+  if [ -z "$pin" ] && [ -t 0 ]; then
+    read -r -p "Введите PIN для подключения Moonlight (4 цифры, например 1234): " pin
+  fi
+  pin="${pin:-1234}"
   if ! [[ $pin =~ ^[0-9]{4}$ ]]; then
     error "PIN должен быть ровно 4 цифры."
   fi
@@ -257,7 +268,7 @@ main() {
       show_summary
       ;;
     run)
-      run_server
+      run_server "${2:-}"
       ;;
     steam)
       start_steam
