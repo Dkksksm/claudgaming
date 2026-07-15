@@ -182,23 +182,30 @@ run_server() {
   sleep 4
   info "Пытаюсь запустить Cloudflare tunnel..."
   ensure_cloudflared
-  nohup cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate > "$INSTALL_DIR/cloudflared.log" 2>&1 &
+  nohup cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate --logfile "$INSTALL_DIR/cloudflared.log" --loglevel info > /dev/null 2>&1 &
   sleep 6
-  local tunnel_url
-  tunnel_url=$(grep -oE 'https?://[^ ]+trycloudflare\.com' "$INSTALL_DIR/cloudflared.log" | tail -n 1 || true)
+  local tunnel_url=""
+  for i in 1 2 3 4 5 6; do
+    tunnel_url=$(grep -oE 'https?://[^ ]+trycloudflare\.com' "$INSTALL_DIR/cloudflared.log" | tail -n 1 || true)
+    if [ -n "$tunnel_url" ]; then
+      break
+    fi
+    sleep 2
+  done
   if [ -n "$tunnel_url" ]; then
     echo "Cloudflare tunnel URL: $tunnel_url"
   else
-    info "Cloudflare tunnel запущен, ожидаю URL в $INSTALL_DIR/cloudflared.log"
+    info "Cloudflare tunnel запущен, но публичный URL ещё не получен. Проверьте лог: $INSTALL_DIR/cloudflared.log"
   fi
 
   local local_ip
   local_ip=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
-  info "Moonlight Web должен быть доступен по адресу:"
+  info "Moonlight Web должен быть доступен по локальному адресу:"
   echo "  http://127.0.0.1:8080"
   echo "  локальный адрес: http://$local_ip:8080"
   echo "PIN для подключения Moonlight: $pin"
   echo "Порт Moonlight по умолчанию: 47989"
+  echo "Если вы используете Google Colab, публичный доступ возможен только через Cloudflare tunnel."
   echo "Чтобы запустить Steam через Xvfb используйте:"
   echo "  xvfb-run -s '-screen 0 1920x1080x24' steam"
   echo "Или запустите SteamCMD для установки/ обновления игр:"

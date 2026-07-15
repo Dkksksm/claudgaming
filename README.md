@@ -15,6 +15,8 @@ sudo bash clab_claud_gaming.sh run
 
 Если `cloudflared` доступен, скрипт попытается поднять tunnel и вывести URL `trycloudflare.com`.
 
+> В Google Colab локальный адрес `http://172.x.x.x:8080` или `http://127.0.0.1:8080` не доступен извне. Надо использовать публичный URL `trycloudflare.com`, который появляется после запуска tunnel.
+
 ### Запуск из Google Colab одним скриптом
 
 ```bash
