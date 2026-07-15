@@ -26,7 +26,7 @@ os.environ["PIN"] = "5555"
 - ✅ Автоматическая установка зависимостей
 - ✅ SteamCMD + steam_helper.sh для установки игр
 - ✅ Moonlight Web для стриминга
-- ✅ Cloudflare Tunnel или ngrok для публичного доступа
+- ✅ Cloudflare Tunnel, ngrok или localtunnel для публичного доступа
 - ✅ GPU поддержка (Tesla T4)
 - ✅ Автоматический PIN через API
 - ✅ Audio для поддержания активности Colab

@@ -132,7 +132,7 @@ def install_dependencies():
     
     cmds = [
         "apt-get update -qq 2>/dev/null || true",
-        "apt-get install -y -qq curl wget unzip ca-certificates gnupg2 software-properties-common lsb-release xauth xvfb procps mesa-utils --no-install-recommends 2>/dev/null || true",
+        "apt-get install -y -qq curl wget unzip ca-certificates gnupg2 software-properties-common lsb-release xauth xvfb procps mesa-utils npm --no-install-recommends 2>/dev/null || true",
         "dpkg --add-architecture i386 2>/dev/null || true",
         "apt-get update -qq 2>/dev/null || true",
         "apt-get install -y -qq libgl1-mesa-dri libgl1-mesa-glx libglapi-mesa libglu1-mesa libx11-6 libxrandr2 libxinerama1 libxcursor1 libxss1 libxcb1 libxext6 libxi6 libice6 libsm6 libfontconfig1 libfreetype6 libdbus-1-3 libnss3 libasound2 libsdl2-2.0-0 libcurl4 libcurl4-openssl-dev --no-install-recommends 2>/dev/null || true",
@@ -220,17 +220,31 @@ def install_ngrok():
     
     info("Устанавливаю ngrok...")
     # Скачиваем ngrok
-    run_cmd("curl -L -s -o /tmp/ngrok.zip https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz", check=False)
+    run_cmd("curl -L -s -o /tmp/ngrok.tgz https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz", check=False)
     
-    if os.path.exists("/tmp/ngrok.zip"):
-        run_cmd("tar -xzf /tmp/ngrok.zip -C /tmp && mv /tmp/ngrok /usr/local/bin/", check=False)
+    if os.path.exists("/tmp/ngrok.tgz"):
+        run_cmd("tar -xzf /tmp/ngrok.tgz -C /tmp && mv /tmp/ngrok /usr/local/bin/", check=False)
         os.chmod("/usr/local/bin/ngrok", 0o755)
         success("ngrok установлен")
     else:
-        warn("Не удалось установить ngrok, используем cloudflared")
+        warn("Не удалось установить ngrok")
+
+def install_localtunnel():
+    """Устанавливает localtunnel через npm (работает в Colab)"""
+    if command_exists("lt"):
+        success("localtunnel уже установлен")
+        return
+    
+    info("Устанавливаю localtunnel...")
+    run_cmd("npm install -g localtunnel 2>/dev/null || true", check=False)
+    
+    if command_exists("lt"):
+        success("localtunnel установлен")
+    else:
+        warn("Не удалось установить localtunnel")
 
 def start_tunnel():
-    """Запускает туннель (cloudflared или ngrok)"""
+    """Запускает туннель (cloudflared, ngrok или localtunnel)"""
     info("Запускаю туннель для публичного доступа...")
     
     log_file = os.path.join(INSTALL_DIR, "tunnel.log")
@@ -248,6 +262,14 @@ def start_tunnel():
                 if "trycloudflare.com" in content:
                     success("Cloudflare tunnel запущен")
                     return "cloudflared"
+    
+    # Альтернатива: localtunnel (лучше работает в Colab)
+    if command_exists("lt"):
+        cmd = f"nohup stdbuf -oL -eL lt --port {MOONLIGHT_PORT} > {log_file} 2>&1 &"
+        run_cmd(cmd, check=False)
+        time.sleep(5)
+        success("localtunnel tunnel запущен")
+        return "localtunnel"
     
     # Альтернатива: ngrok
     if command_exists("ngrok"):
@@ -478,6 +500,10 @@ def get_tunnel_url() -> Optional[str]:
                     match = re.search(r'https://[a-z0-9]+\.ngrok\.io', content)
                     if match:
                         return match.group(0)
+                    # localtunnel
+                    match = re.search(r'https://[a-z0-9]+\.loca\.lt', content)
+                    if match:
+                        return match.group(0)
             time.sleep(1)
     
     return None
@@ -628,6 +654,7 @@ def main():
     install_steam_client()
     install_cloudflared()
     install_ngrok()
+    install_localtunnel()
     install_moonlight_web()
     print()
     
