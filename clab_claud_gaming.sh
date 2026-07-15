@@ -187,15 +187,26 @@ run_server() {
 
   info "Запускаю Moonlight Web server..."
   cd "$INSTALL_DIR"
-  nohup ./web-server --config-path server/config.json > "$INSTALL_DIR/web-server.log" 2>&1 &
+  nohup stdbuf -oL -eL ./web-server --config-path server/config.json > "$INSTALL_DIR/web-server.log" 2>&1 &
   local web_pid=$!
   info "web-server запущен PID $web_pid"
 
   sleep 4
   info "Пытаюсь запустить Cloudflare tunnel..."
   ensure_cloudflared
-  nohup cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate --logfile "$INSTALL_DIR/cloudflared.log" --loglevel info > /dev/null 2>&1 &
+  nohup stdbuf -oL -eL cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate --loglevel info > "$INSTALL_DIR/cloudflared.log" 2>&1 &
+  local cloudflared_pid=$!
+  info "cloudflared запущен PID $cloudflared_pid"
   sleep 6
+  info "Проверяю файлы логов..."
+  ls -lh "$INSTALL_DIR/web-server.log" "$INSTALL_DIR/cloudflared.log" 2>/dev/null || true
+  echo
+  info "Первые строки web-server.log:"
+  head -n 10 "$INSTALL_DIR/web-server.log" 2>/dev/null || true
+  echo
+  info "Первые строки cloudflared.log:"
+  head -n 10 "$INSTALL_DIR/cloudflared.log" 2>/dev/null || true
+  echo
   local tunnel_url=""
   for i in 1 2 3 4 5 6; do
     tunnel_url=$(grep -oE 'https?://[^ ]+trycloudflare\.com' "$INSTALL_DIR/cloudflared.log" | tail -n 1 || true)
