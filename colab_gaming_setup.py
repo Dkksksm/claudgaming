@@ -212,6 +212,54 @@ def install_cloudflared():
     
     success("cloudflared установлен")
 
+def install_ngrok():
+    """Устанавливает ngrok как альтернативу cloudflared"""
+    if command_exists("ngrok"):
+        success("ngrok уже установлен")
+        return
+    
+    info("Устанавливаю ngrok...")
+    # Скачиваем ngrok
+    run_cmd("curl -L -s -o /tmp/ngrok.zip https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz", check=False)
+    
+    if os.path.exists("/tmp/ngrok.zip"):
+        run_cmd("tar -xzf /tmp/ngrok.zip -C /tmp && mv /tmp/ngrok /usr/local/bin/", check=False)
+        os.chmod("/usr/local/bin/ngrok", 0o755)
+        success("ngrok установлен")
+    else:
+        warn("Не удалось установить ngrok, используем cloudflared")
+
+def start_tunnel():
+    """Запускает туннель (cloudflared или ngrok)"""
+    info("Запускаю туннель для публичного доступа...")
+    
+    log_file = os.path.join(INSTALL_DIR, "tunnel.log")
+    
+    # Пробуем cloudflared
+    if command_exists("cloudflared"):
+        cmd = f"nohup stdbuf -oL -eL cloudflared tunnel --url http://127.0.0.1:{MOONLIGHT_PORT} --no-autoupdate --loglevel info > {log_file} 2>&1 &"
+        run_cmd(cmd, check=False)
+        time.sleep(8)
+        
+        # Проверяем
+        if os.path.exists(log_file):
+            with open(log_file, 'r') as f:
+                content = f.read()
+                if "trycloudflare.com" in content:
+                    success("Cloudflare tunnel запущен")
+                    return "cloudflared"
+    
+    # Альтернатива: ngrok
+    if command_exists("ngrok"):
+        cmd = f"nohup stdbuf -oL -eL ngrok http {MOONLIGHT_PORT} > {log_file} 2>&1 &"
+        run_cmd(cmd, check=False)
+        time.sleep(5)
+        success("ngrok tunnel запущен")
+        return "ngrok"
+    
+    warn("Не удалось запустить туннель")
+    return None
+
 def install_moonlight_web():
     """Устанавливает Moonlight Web"""
     info("Скачиваю и устанавливаю Moonlight Web...")
@@ -403,49 +451,34 @@ def start_moonlight_web():
             warn(f"Ошибка при настройке PIN: {e}")
 
 def start_cloudflare_tunnel():
-    """Запускает Cloudflare tunnel"""
-    info("Запускаю Cloudflare tunnel...")
-    
-    if not command_exists("cloudflared"):
-        error("cloudflared не установлен")
-    
-    log_file = os.path.join(INSTALL_DIR, "cloudflared.log")
-    
-    # Проверяем, что web-server запущен
-    time.sleep(2)
-    
-    # Запускаем tunnel
-    cmd = f"nohup stdbuf -oL -eL cloudflared tunnel --url http://127.0.0.1:{MOONLIGHT_PORT} --hostname= --no-autoupdate --loglevel info > {log_file} 2>&1 &"
-    run_cmd(cmd, check=False)
-    
-    success("Cloudflare tunnel запущен")
-    time.sleep(8)
-    
-    # Проверяем, что tunnel работает
-    if os.path.exists(log_file):
-        with open(log_file, 'r') as f:
-            content = f.read()
-            if "ERR" in content or "error" in content.lower():
-                warn("Cloudflare tunnel может не работать. Проверьте лог.")
-                print(content[-500:])
+    """Запускает Cloudflare tunnel (обертка)"""
+    return start_tunnel()
 
 # ============================================================================
 # ВЫВОД ИНФОРМАЦИИ
 # ============================================================================
 
 def get_tunnel_url() -> Optional[str]:
-    """Получает публичный URL Cloudflare tunnel"""
-    log_file = os.path.join(INSTALL_DIR, "cloudflared.log")
+    """Получает публичный URL туннеля"""
+    import re
     
-    for _ in range(10):
-        if os.path.exists(log_file):
-            with open(log_file, 'r') as f:
-                content = f.read()
-                import re
-                match = re.search(r'https?://[^ ]+trycloudflare\.com', content)
-                if match:
-                    return match.group(0)
-        time.sleep(1)
+    # Проверяем оба лога
+    for log_name in ["cloudflared.log", "tunnel.log"]:
+        log_file = os.path.join(INSTALL_DIR, log_name)
+        
+        for _ in range(10):
+            if os.path.exists(log_file):
+                with open(log_file, 'r') as f:
+                    content = f.read()
+                    # Cloudflare
+                    match = re.search(r'https?://[^ ]+trycloudflare\.com', content)
+                    if match:
+                        return match.group(0)
+                    # ngrok
+                    match = re.search(r'https://[a-z0-9]+\.ngrok\.io', content)
+                    if match:
+                        return match.group(0)
+            time.sleep(1)
     
     return None
 
@@ -594,6 +627,7 @@ def main():
     install_steamcmd()
     install_steam_client()
     install_cloudflared()
+    install_ngrok()
     install_moonlight_web()
     print()
     
