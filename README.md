@@ -1,46 +1,101 @@
 # claudgaming
 
-Скрипт для установки и запуска облачной игровой среды с Steam, Moonlight Web и Cloudflare Tunnel.
+🎮 **Облачный гейминг в Google Colab с Tesla T4**
 
-Файл установки: `clab_claud_gaming.sh`
+Полностью автоматизированная установка Steam, Moonlight Web и Cloudflare Tunnel для стриминга игр.
 
-Пример использования:
+## 🚀 Быстрый старт в Google Colab (Python ячейка)
 
-```bash
-sudo bash clab_claud_gaming.sh install
-sudo bash clab_claud_gaming.sh run
+**Самый простой способ - скопируйте это в ячейку Python:**
+
+```python
+!curl -L https://raw.githubusercontent.com/Dkksksm/claudgaming/main/colab_gaming_setup.py -o /tmp/colab_gaming_setup.py
+!python3 /tmp/colab_gaming_setup.py
 ```
 
-После выполнения `install` веб-интерфейс Moonlight будет доступен на порту `8080`, а стриминг Moonlight — на порту `47989`.
+**С кастомным PIN:**
 
-Если `cloudflared` доступен, скрипт попытается поднять tunnel и вывести URL `trycloudflare.com`.
-
-> В Google Colab локальный адрес `http://172.x.x.x:8080` или `http://127.0.0.1:8080` не доступен извне. Надо использовать публичный URL `trycloudflare.com`, который появляется после запуска tunnel.
-
-### Запуск из Google Colab одним скриптом
-
-```bash
-cd /content
-curl -L https://raw.githubusercontent.com/Dkksksm/claudgaming/main/colab_gaming.sh -o /content/colab_gaming.sh
-chmod +x /content/colab_gaming.sh
-sudo /content/colab_gaming.sh
+```python
+import os
+os.environ["PIN"] = "5555"
+!python3 /tmp/colab_gaming_setup.py
 ```
 
-Если хотите задать PIN заранее:
+## 📋 Что входит
 
-```bash
-export PIN=1234
-sudo /content/colab_gaming.sh
+- ✅ Автоматическая установка зависимостей
+- ✅ SteamCMD для установки игр
+- ✅ Moonlight Web для стриминга
+- ✅ Cloudflare Tunnel для публичного доступа
+- ✅ GPU поддержка (Tesla T4)
+- ✅ Красивый вывод и логирование
+
+## 📝 Файлы
+
+- **`colab_gaming_setup.py`** — Python скрипт для Google Colab (рекомендуется)
+- **`google_colab_gaming.sh`** — Bash скрипт для локального использования
+- **`clab_claud_gaming.sh`** — Полный bash скрипт с функциями install/run
+- **`colab_gaming.sh`** — Bash одностроник для Colab
+
+## 🎯 Использование
+
+### Google Colab (Python, рекомендуется)
+
+В новой ячейке:
+
+```python
+!curl -L https://raw.githubusercontent.com/Dkksksm/claudgaming/main/colab_gaming_setup.py -o /tmp/colab_gaming_setup.py
+!python3 /tmp/colab_gaming_setup.py
 ```
 
-Для Google Colab с Tesla T4:
+### Linux/Debian (Bash)
 
 ```bash
-cd /content
-git clone https://github.com/Dkksksm/claudgaming.git
-cd claudgaming
-sudo bash clab_claud_gaming.sh install
-sudo bash clab_claud_gaming.sh run
+sudo bash google_colab_gaming.sh
 ```
 
-Если Steam не установлен, используйте `sudo bash clab_claud_gaming.sh steamcmd` для установки/входа.
+С кастомным PIN:
+
+```bash
+PIN=1234 sudo bash google_colab_gaming.sh
+```
+
+## ⚙️ Конфигурация
+
+| Переменная | Значение по умолчанию | Описание |
+|-----------|----------------------|---------|
+| `PIN` | `1234` | PIN для подключения Moonlight |
+| `INSTALL_DIR` | `/content/claudgaming-moonlight` | Папка установки |
+
+## 📊 Что произойдет
+
+1. Проверка GPU и интернета
+2. Установка системных зависимостей
+3. Скачивание и установка SteamCMD, cloudflared, Moonlight Web
+4. Запуск Moonlight Web сервера
+5. Запуск Cloudflare Tunnel для публичного доступа
+6. Вывод информации подключения с публичным URL
+
+## 🔗 Результат
+
+После установки вы получите:
+
+```
+🔐 PIN для подключения Moonlight:    1234
+🌐 Локальный адрес:                  http://127.0.0.1:8080
+📡 Порт стриминга Moonlight:         47989
+🚀 ПУБЛИЧНЫЙ URL (Cloudflare):       https://xxxxx.trycloudflare.com
+```
+
+## 📖 Следующие шаги
+
+1. Откройте публичный URL в браузере
+2. Установите Steam через steamcmd
+3. Подключитесь к Moonlight через клиент
+4. Запустите игры!
+
+## 📋 Системные требования
+
+- Google Colab с Tesla T4 GPU
+- Интернет-соединение
+- ~10 GB свободного места
