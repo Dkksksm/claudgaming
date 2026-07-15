@@ -86,14 +86,12 @@ main() {
     MOONLIGHT_PIN="$PIN" KEEP_ALIVE=true bash "$INSTALL_SCRIPT" run "$PIN" true
   fi
 
-  local local_ip
-  local_ip=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
-
   echo
-  echo "Готово. Moonlight Web доступен по адресу: http://$local_ip:8080"
+  echo "Готово. Moonlight Web запускается." 
   echo "PIN для подключения: $PIN"
   echo "Порт Moonlight: 47989"
-  echo "Если tunnel Cloudflare поднялся, ищите URL в $REPO_DIR/claudgaming-moonlight/cloudflared.log"
+  echo "Cloudflare tunnel URL появится в выводе выше, если туннель успешно запустится."
+  echo "Если он не появился, проверьте лог: $REPO_DIR/claudgaming-moonlight/cloudflared.log"
 }
 
 main "$@"

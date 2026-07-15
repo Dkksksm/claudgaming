@@ -158,14 +158,8 @@ EOF
 }
 
 show_summary() {
-  local ip local_ip pub_ip
-  local_ip=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
-  pub_ip=$(curl -s ifconfig.me || true)
   info "Готово!"
   echo
-  echo "Moonlight Web URL: http://$local_ip:8080"
-  echo "Moonlight stream порт: 47989"
-  [ -n "$pub_ip" ] && echo "Публичный IP: $pub_ip"
   echo "Файлы установлены в: $INSTALL_DIR"
   echo "Для запуска используйте: sudo bash clab_claud_gaming.sh run"
   check_gpu
@@ -221,18 +215,11 @@ run_server() {
     info "Cloudflare tunnel запущен, но публичный URL ещё не получен. Проверьте лог: $INSTALL_DIR/cloudflared.log"
   fi
 
-  local local_ip
-  local_ip=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
-  info "Moonlight Web должен быть доступен по локальному адресу:"
-  echo "  http://127.0.0.1:8080"
-  echo "  локальный адрес: http://$local_ip:8080"
+  info "Moonlight Web запущен."
   echo "PIN для подключения Moonlight: $pin"
   echo "Порт Moonlight по умолчанию: 47989"
-  echo "Если вы используете Google Colab, публичный доступ возможен только через Cloudflare tunnel."
-  echo "Чтобы запустить Steam через Xvfb используйте:"
-  echo "  xvfb-run -s '-screen 0 1920x1080x24' steam"
-  echo "Или запустите SteamCMD для установки/ обновления игр:"
-  echo "  steamcmd +login anonymous"
+  echo "Если Cloudflare tunnel стартовал, URL будет показан выше."
+  echo "Если нет — проверьте лог: $INSTALL_DIR/cloudflared.log"
 
   if [ "$keep_alive" = "true" ] || [ "${KEEP_ALIVE:-false}" = "true" ]; then
     info "Держу Colab-ячейку активной. Нажмите Ctrl+C, чтобы остановить."
