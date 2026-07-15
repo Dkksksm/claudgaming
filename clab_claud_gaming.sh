@@ -227,6 +227,12 @@ run_server() {
     info "Держу Colab-ячейку активной. Нажмите Ctrl+C, чтобы остановить."
     mkdir -p "$INSTALL_DIR"
     touch "$INSTALL_DIR/web-server.log" "$INSTALL_DIR/cloudflared.log"
+    echo
+    info "Логи web-server и cloudflared находятся здесь:"
+    echo "  $INSTALL_DIR/web-server.log"
+    echo "  $INSTALL_DIR/cloudflared.log"
+    echo
+    echo "--- Последние строки логов ---"
     tail -n 20 -F "$INSTALL_DIR/web-server.log" "$INSTALL_DIR/cloudflared.log"
   fi
 }

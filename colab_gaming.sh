@@ -47,12 +47,12 @@ ensure_repo() {
 ensure_root() {
   if [ "${EUID:-$(id -u)}" -ne 0 ]; then
     if command -v sudo >/dev/null 2>&1; then
-      SUDO="sudo env"
+      SUDO="sudo"
     else
       error "Требуются root-права или sudo для установки."
     fi
   else
-    SUDO="env"
+    SUDO=""
   fi
 }
 
@@ -79,7 +79,11 @@ main() {
   prompt_pin
 
   info "Запускаю Moonlight Web и Cloudflare tunnel"
-  MOONLIGHT_PIN="$PIN" KEEP_ALIVE=true $SUDO bash "$INSTALL_SCRIPT" run "$PIN" true
+  if [ -n "$SUDO" ]; then
+    $SUDO bash -c "MOONLIGHT_PIN='$PIN' KEEP_ALIVE=true bash '$INSTALL_SCRIPT' run '$PIN' true"
+  else
+    MOONLIGHT_PIN="$PIN" KEEP_ALIVE=true bash "$INSTALL_SCRIPT" run "$PIN" true
+  fi
 
   local local_ip
   local_ip=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
