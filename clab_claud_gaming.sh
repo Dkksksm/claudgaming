@@ -172,8 +172,9 @@ show_summary() {
 }
 
 run_server() {
-  local pin
+  local pin keep_alive
   pin="${1:-${MOONLIGHT_PIN:-}}"
+  keep_alive="${2:-false}"
   if [ -z "$pin" ] && [ -t 0 ]; then
     read -r -p "Введите PIN для подключения Moonlight (4 цифры, например 1234): " pin
   fi
@@ -221,6 +222,13 @@ run_server() {
   echo "  xvfb-run -s '-screen 0 1920x1080x24' steam"
   echo "Или запустите SteamCMD для установки/ обновления игр:"
   echo "  steamcmd +login anonymous"
+
+  if [ "$keep_alive" = "true" ] || [ "${KEEP_ALIVE:-false}" = "true" ]; then
+    info "Держу Colab-ячейку активной. Нажмите Ctrl+C, чтобы остановить."
+    mkdir -p "$INSTALL_DIR"
+    touch "$INSTALL_DIR/web-server.log" "$INSTALL_DIR/cloudflared.log"
+    tail -n 20 -F "$INSTALL_DIR/web-server.log" "$INSTALL_DIR/cloudflared.log"
+  fi
 }
 
 start_steam() {
@@ -268,7 +276,7 @@ main() {
       show_summary
       ;;
     run)
-      run_server "${2:-}"
+      run_server "${2:-}" "${3:-false}"
       ;;
     steam)
       start_steam

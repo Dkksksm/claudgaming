@@ -79,7 +79,7 @@ main() {
   prompt_pin
 
   info "Запускаю Moonlight Web и Cloudflare tunnel"
-  MOONLIGHT_PIN="$PIN" $SUDO bash "$INSTALL_SCRIPT" run
+  MOONLIGHT_PIN="$PIN" KEEP_ALIVE=true $SUDO bash "$INSTALL_SCRIPT" run "$PIN" true
 
   local local_ip
   local_ip=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
