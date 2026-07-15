@@ -166,6 +166,40 @@ def install_steamcmd():
     
     success("steamcmd установлен")
 
+def install_steam_client():
+    """Устанавливает Steam клиент для Colab"""
+    info("Устанавливаю Steam клиент...")
+    
+    # Проверяем, есть ли Steam уже
+    if command_exists("steam"):
+        success("Steam клиент уже установлен")
+        return
+    
+    # Steam требует много места и специальных зависимостей
+    # В Colab лучше использовать steamcmd для управления
+    info("Steam клиент не устанавливается в Colab (мало места)")
+    info("Используйте steamcmd для установки игр")
+    
+    # Создаем скрипт для быстрого запуска steamcmd
+    steam_helper = os.path.join(INSTALL_DIR, "steam_helper.sh")
+    with open(steam_helper, 'w') as f:
+        f.write('''#!/bin/bash
+# Быстрый запуск steamcmd для установки игр
+# Использование: ./steam_helper.sh app_id
+
+APP_ID="$1"
+if [ -z "$APP_ID" ]; then
+    echo "Usage: ./steam_helper.sh <app_id>"
+    echo "Example: ./steam_helper.sh 440  # Team Fortress 2"
+    exit 1
+fi
+
+steamcmd +login anonymous +app_update $APP_ID validate +quit
+''')
+    os.chmod(steam_helper, 0o755)
+    
+    success("Steam helper создан (для установки игр)")
+
 def install_cloudflared():
     """Устанавливает cloudflared"""
     if command_exists("cloudflared"):
@@ -312,45 +346,61 @@ def start_moonlight_web():
     run_cmd(cmd, check=False)
     
     success("Moonlight Web запущен")
-    time.sleep(3)
+    time.sleep(5)  # Ждем запуск сервера
+    
+    # Проверяем, что сервер запустился
+    if os.path.exists(log_file):
+        with open(log_file, 'r') as f:
+            content = f.read()
+            if "error" in content.lower() or "panic" in content.lower():
+                warn("Ошибка в web-server. Проверьте лог:")
+                print(content[-500:])
     
     # Устанавливаем PIN через API (как в moon-pair.sh)
     info("Настраиваю PIN для Moonlight...")
-    time.sleep(2)  # Ждем запуск сервера
     
-    try:
-        import urllib.request
-        import ssl
-        
-        # Отключаем SSL проверку для localhost
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        
-        # Устанавливаем PIN через API
-        pin_url = f"https://localhost:{STREAMING_PORT}/api/pin"
-        pin_data = json.dumps({"pin": PIN, "name": "claudgaming"}).encode()
-        
-        req = urllib.request.Request(
-            pin_url,
-            data=pin_data,
-            headers={"Content-Type": "application/json"},
-            method="POST"
-        )
-        
-        # Добавляем basic auth (admin:admin)
-        import base64
-        credentials = base64.b64encode(b"admin:admin").decode()
-        req.add_header("Authorization", f"Basic {credentials}")
-        
+    # Ждем, пока сервер будет готов принимать запросы
+    for i in range(10):
         try:
-            with urllib.request.urlopen(req, context=ctx, timeout=10) as response:
-                success(f"PIN {PIN} установлен через API")
+            import urllib.request
+            import ssl
+            
+            # Отключаем SSL проверку для localhost
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            
+            # Устанавливаем PIN через API
+            pin_url = f"https://localhost:{STREAMING_PORT}/api/pin"
+            pin_data = json.dumps({"pin": PIN, "name": "claudgaming"}).encode()
+            
+            req = urllib.request.Request(
+                pin_url,
+                data=pin_data,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            
+            # Добавляем basic auth (admin:admin)
+            import base64
+            credentials = base64.b64encode(b"admin:admin").decode()
+            req.add_header("Authorization", f"Basic {credentials}")
+            
+            try:
+                with urllib.request.urlopen(req, context=ctx, timeout=5) as response:
+                    success(f"PIN {PIN} установлен через API")
+                    return
+            except Exception as e:
+                if i < 9:
+                    time.sleep(1)
+                    continue
+                warn(f"Не удалось установить PIN через API: {e}")
+                warn("PIN будет установлен автоматически при первом подключении")
         except Exception as e:
-            warn(f"Не удалось установить PIN через API: {e}")
-            warn("PIN будет установлен автоматически при первом подключении")
-    except Exception as e:
-        warn(f"Ошибка при настройке PIN: {e}")
+            if i < 9:
+                time.sleep(1)
+                continue
+            warn(f"Ошибка при настройке PIN: {e}")
 
 def start_cloudflare_tunnel():
     """Запускает Cloudflare tunnel"""
@@ -360,11 +410,24 @@ def start_cloudflare_tunnel():
         error("cloudflared не установлен")
     
     log_file = os.path.join(INSTALL_DIR, "cloudflared.log")
-    cmd = f"nohup stdbuf -oL -eL cloudflared tunnel --url http://127.0.0.1:{MOONLIGHT_PORT} --no-autoupdate --loglevel info > {log_file} 2>&1 &"
+    
+    # Проверяем, что web-server запущен
+    time.sleep(2)
+    
+    # Запускаем tunnel
+    cmd = f"nohup stdbuf -oL -eL cloudflared tunnel --url http://127.0.0.1:{MOONLIGHT_PORT} --hostname= --no-autoupdate --loglevel info > {log_file} 2>&1 &"
     run_cmd(cmd, check=False)
     
     success("Cloudflare tunnel запущен")
     time.sleep(8)
+    
+    # Проверяем, что tunnel работает
+    if os.path.exists(log_file):
+        with open(log_file, 'r') as f:
+            content = f.read()
+            if "ERR" in content or "error" in content.lower():
+                warn("Cloudflare tunnel может не работать. Проверьте лог.")
+                print(content[-500:])
 
 # ============================================================================
 # ВЫВОД ИНФОРМАЦИИ
@@ -424,7 +487,9 @@ def print_connection_info():
     print("-"*72)
     print()
     print("  1. Откройте публичный URL в браузере (если он уже готов)")
-    print("  2. Установите Steam через steamcmd")
+    print("  2. Установите игру через steamcmd:")
+    print(f"     !bash {INSTALL_DIR}/steam_helper.sh 440  # Team Fortress 2")
+    print(f"     !bash {INSTALL_DIR}/steam_helper.sh 740  # Cuphead")
     print("  3. Подключитесь через Moonlight клиент")
     print("  4. Запустите игры!")
     print()
@@ -527,6 +592,7 @@ def main():
     print("ЭТАП 2: Установка компонентов")
     print("━"*72)
     install_steamcmd()
+    install_steam_client()
     install_cloudflared()
     install_moonlight_web()
     print()
