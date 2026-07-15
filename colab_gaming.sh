@@ -80,8 +80,9 @@ main() {
 
   info "Запускаю Moonlight Web и Cloudflare tunnel"
   if [ -n "$SUDO" ]; then
-    $SUDO bash -c "MOONLIGHT_PIN='$PIN' KEEP_ALIVE=true bash '$INSTALL_SCRIPT' run '$PIN' true"
+    $SUDO bash -c "cd '$REPO_DIR' && MOONLIGHT_PIN='$PIN' KEEP_ALIVE=true bash '$INSTALL_SCRIPT' run '$PIN' true"
   else
+    cd "$REPO_DIR"
     MOONLIGHT_PIN="$PIN" KEEP_ALIVE=true bash "$INSTALL_SCRIPT" run "$PIN" true
   fi
 
